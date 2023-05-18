@@ -8,24 +8,31 @@ class AnimeSpider(CrawlSpider):
     name = 'myanimelist'
     allowed_domains = ['myanimelist.net']
     start_urls = ['https://myanimelist.net/topmanga.php?type=manga&limit=0']
-
-    custom_settings = {
-        'DOWNLOAD_DELAY': 0.2,
-    }
+    # custom_settings = {
+    #     'DOWNLOAD_DELAY': 0.5,
+    # }
 
     def start_requests(self):
         for url in self.start_urls:
             yield scrapy.Request(url, callback=self.parse_link)
 
-
     def parse_link(self,response):
-
         next_page = response.xpath('//a[text()="Next 50"]/@href').get()
 
         for link in response.css('.ranking-list td.title a::attr(href)').getall():
             yield response.follow(link, callback=self.parse_anime_info)
+        # Instead of using "follow", the choice of Request is much better for handle all elements in 1 page
+        # Using follow may cause turn to next_page during scraping those elements, while Request reduces it
         if next_page:
-            yield response.follow(next_page, callback=self.parse_link)
+            url = response.urljoin(next_page)
+            yield scrapy.Request(url, callback=self.parse_link)
+        # if next_page:
+        #     url = response.urljoin(next_page)
+        #     yield response.follow(url, callback=self.parse_link)
+        
+            
+            
+            
     def parse_anime_info(self,response):
         yield{
             'name': response.css('span.h1-title ::text').get(),
@@ -45,4 +52,5 @@ class AnimeSpider(CrawlSpider):
             'members': response.xpath('//span[text()="Members:"]/following-sibling::text()').get(),
             'favorites': response.xpath('//span[text()="Favorites:"]/following-sibling::text()').get(),
         }
-
+        
+        
